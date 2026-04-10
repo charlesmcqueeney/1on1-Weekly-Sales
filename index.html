@@ -115,6 +115,8 @@
     .coach-card.bad { border-color: rgba(239,68,68,.35); background: linear-gradient(180deg, var(--soft-bad), transparent); }
     .coach-list { margin: 8px 0 0 18px; color: var(--text); }
     .coach-list li { margin-bottom: 6px; }
+    .dashboard-shell { transition: opacity .28s ease, transform .28s ease, filter .28s ease; transform-origin: top center; }
+    .dashboard-shell.is-transitioning { opacity: .35; transform: translateY(10px) scale(.992); filter: blur(1px); }
     @media (max-width: 1180px) {
       .layout, .two-col { grid-template-columns: 1fr; }
       .stats, .goal-grid, .goal-row, .chart-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
@@ -131,7 +133,7 @@
     <div class="sub">Track weekly numbers, answers, goals, trends, and coaching by team member. All charts, goals, and coaching update to the date range you select.</div>
 
     <div class="layout">
-      <div class="stack">
+      <div id="dashboardShell" class="stack dashboard-shell">
         <div class="card">
           <h2>Team</h2>
           <div class="row row-2">
@@ -343,7 +345,7 @@
     saveEntryBtn: $('saveEntryBtn'), cancelEditBtn: $('cancelEditBtn'), clearFormBtn: $('clearFormBtn'), saveBackupBtn: $('saveBackupBtn'), exportCsvBtn: $('exportCsvBtn'),
     loadBackupBtn: $('loadBackupBtn'), backupFile: $('backupFile'), startDate: $('startDate'), endDate: $('endDate'),
     stats: $('stats'), goalsSummary: $('goalsSummary'), chartGrid: $('chartGrid'), answersPanel: $('answersPanel'),
-    coachingPanel: $('coachingPanel'), historyBody: $('historyBody'),
+    coachingPanel: $('coachingPanel'), historyBody: $('historyBody'), dashboardShell: $('dashboardShell'),
     goalAppsMonth: $('goalAppsMonth'), goalCallsWeek: $('goalCallsWeek'), goalConversationsDay: $('goalConversationsDay'),
     goalQuotesWeek: $('goalQuotesWeek'), goalMultiLine: $('goalMultiLine'), goalConversion90: $('goalConversion90'),
     saveGoalsBtn: $('saveGoalsBtn'), applyDefaultsBtn: $('applyDefaultsBtn'), entryFormTitle: $('entryFormTitle'), entryFormModeText: $('entryFormModeText'), editBanner: $('editBanner')
@@ -453,7 +455,7 @@
     els.teamMember.value = name;
     els.dashboardMember.value = name;
     fillGoalsInputs();
-    render();
+    render(true);
   }
 
   function deleteMember() {
@@ -590,7 +592,7 @@
     if (days === 'all') {
       els.endDate.value = end;
       els.startDate.value = entries.length ? entries[0].weekOf : end;
-      render();
+      render(true);
       return;
     }
     const endDate = toDate(end);
@@ -700,7 +702,7 @@
       conversion90: Number(els.goalConversion90.value || defaults.conversion90)
     };
     saveState();
-    render();
+    render(true);
     alert('Goals saved for selected team member.');
   }
 
@@ -710,7 +712,7 @@
     state.goalsByMember[member] = { ...defaults };
     saveState();
     fillGoalsInputs();
-    render();
+    render(true);
   }
 
   function renderStats(scopeEntries, scopeMember) {
@@ -1083,15 +1085,34 @@
     document.querySelectorAll('tr[data-edit-id]').forEach(row => row.addEventListener('click', () => loadEntryIntoForm(row.dataset.editId)));
   }
 
-  function render() {
-    const scopeMember = els.dashboardMember.value || '__ALL__';
-    const scopeEntries = getDashboardEntries();
-    renderStats(scopeEntries, scopeMember);
-    renderGoalsSummary(scopeEntries, scopeMember);
-    renderCharts(scopeEntries, scopeMember);
-    renderAnswers(scopeEntries);
-    renderCoaching(scopeEntries, scopeMember);
-    renderHistory(scopeEntries, scopeMember);
+
+  let transitionTimer = null;
+
+  function render(animate = false) {
+    const doRender = () => {
+      const scopeMember = els.dashboardMember.value || '__ALL__';
+      const scopeEntries = getDashboardEntries();
+      renderStats(scopeEntries, scopeMember);
+      renderGoalsSummary(scopeEntries, scopeMember);
+      renderCharts(scopeEntries, scopeMember);
+      renderAnswers(scopeEntries);
+      renderCoaching(scopeEntries, scopeMember);
+      renderHistory(scopeEntries, scopeMember);
+    };
+
+    if (!animate || !els.dashboardShell) {
+      doRender();
+      return;
+    }
+
+    clearTimeout(transitionTimer);
+    els.dashboardShell.classList.add('is-transitioning');
+    transitionTimer = setTimeout(() => {
+      doRender();
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => els.dashboardShell.classList.remove('is-transitioning'));
+      });
+    }, 150);
   }
 
   function bind() {
@@ -1104,14 +1125,14 @@
     els.exportCsvBtn.addEventListener('click', exportCsv);
     els.loadBackupBtn.addEventListener('click', () => els.backupFile.click());
     els.backupFile.addEventListener('change', loadBackupFile);
-    els.dashboardMember.addEventListener('change', () => { fillGoalsInputs(); render(); });
+    els.dashboardMember.addEventListener('change', () => { fillGoalsInputs(); render(true); });
     els.teamMember.addEventListener('change', () => {
       if (els.dashboardMember.value !== '__ALL__') els.dashboardMember.value = els.teamMember.value;
       fillGoalsInputs();
-      render();
+      render(true);
     });
-    els.startDate.addEventListener('change', render);
-    els.endDate.addEventListener('change', render);
+    els.startDate.addEventListener('change', () => render(true));
+    els.endDate.addEventListener('change', () => render(true));
     els.saveGoalsBtn.addEventListener('click', saveGoals);
     els.applyDefaultsBtn.addEventListener('click', resetGoalsToDefaults);
     rangeButtons.forEach(btn => btn.addEventListener('click', () => setRange(btn.dataset.range)));

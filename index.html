@@ -410,8 +410,38 @@ async function ensureLoggedIn() {
       return clone(defaultState);
     }
   }
-  function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  async function saveState() {
+  if (!currentUser) return;
 
+  await supabase.from("entries").delete().eq("user_id", currentUser.id);
+
+  const rows = (state.entries || []).map(entry => ({
+    user_id: currentUser.id,
+    member: entry.member || "",
+    weekOf: entry.weekOf || "",
+    calls: Number(entry.calls || 0),
+    conversations: Number(entry.conversations || 0),
+    householdsQuoted: Number(entry.householdsQuoted || 0),
+    appsQuoted: Number(entry.appsQuoted || 0),
+    apps: Number(entry.apps || 0),
+    lifeApps: Number(entry.lifeApps || 0),
+    healthApps: Number(entry.healthApps || 0),
+    premium: Number(entry.premium || 0),
+    weeklyFocus: entry.weeklyFocus || "",
+    question1: entry.question1 || "",
+    question2: entry.question2 || "",
+    question3: entry.question3 || "",
+    updatedAt: entry.updatedAt || new Date().toISOString()
+  }));
+
+  if (rows.length > 0) {
+    const { error } = await supabase.from("entries").insert(rows);
+    if (error) {
+      alert("Save error: " + error.message);
+      return;
+    }
+  }
+}
   function setDefaultWeekDate() {
     const now = new Date();
     const offset = (now.getDay() + 6) % 7;

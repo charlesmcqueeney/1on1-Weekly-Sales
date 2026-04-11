@@ -316,7 +316,7 @@
     </div>
   </div>
 
-<script type="module">
+<script>
 (() => {
   const STORAGE_KEY = 'weekly_1on1_coaching_tracker_v3';
   const defaults = {
@@ -1138,7 +1138,6 @@
     rangeButtons.forEach(btn => btn.addEventListener('click', () => setRange(btn.dataset.range)));
   }
 
-  ensureLoggedIn().then(() => {
   populateMembers();
   setDefaultWeekDate();
   if (!els.startDate.value || !els.endDate.value) autoDateRange();
@@ -1146,7 +1145,7 @@
   setEditMode(null);
   bind();
   render();
-});
+})();
 </script>
 </body>
 </html>

@@ -1,9 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js";
-
-const supabase = createClient(
-  "https://ilwwhudktetejkemxsfz.supabase.co",
-  "sb_publishable_949AZZEfQiw_9gEGfYw9nw_bd1JNGpO"
-);!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -1154,13 +1149,3 @@ const supabase = createClient(
 </script>
 </body>
 </html>
-async function testSave() {
-  await supabase.from("entries").insert([
-    {
-      name: "test",
-      data: { message: "it works" }
-    }
-  ]);
-
-  alert("Saved to database");
-}<button onclick="testSave()">Test Save</button>

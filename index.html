@@ -316,8 +316,46 @@
     </div>
   </div>
 
-<script>
-(() => {
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js";
+
+const supabase = createClient(
+  "https://ilwwhudktetejkemxsfz.supabase.co",
+  "sb_publishable_949AZZEfQiw_9gEGfYw9nw_bd1JNGpO"
+);
+
+let currentUser = null;
+
+async function ensureLoggedIn() {
+  const { data } = await supabase.auth.getUser();
+
+  if (data.user) {
+    currentUser = data.user;
+    return;
+  }
+
+  const email = prompt("Enter your email");
+  const password = prompt("Enter your password");
+
+  if (!email || !password) {
+    alert("Login cancelled");
+    return;
+  }
+
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password
+  });
+
+  if (error) {
+    alert("Login error: " + error.message);
+    return;
+  }
+
+  const result = await supabase.auth.getUser();
+  currentUser = result.data.user;
+  alert("Logged in");
+}(() => {
   const STORAGE_KEY = 'weekly_1on1_coaching_tracker_v3';
   const defaults = {
     appsMonth: 20,
@@ -1138,6 +1176,7 @@
     rangeButtons.forEach(btn => btn.addEventListener('click', () => setRange(btn.dataset.range)));
   }
 
+  ensureLoggedIn().then(() => {
   populateMembers();
   setDefaultWeekDate();
   if (!els.startDate.value || !els.endDate.value) autoDateRange();
@@ -1145,7 +1184,8 @@
   setEditMode(null);
   bind();
   render();
-})();
+  });
+  })();
 </script>
 </body>
 </html>

@@ -1154,3 +1154,13 @@ const supabase = createClient(
 </script>
 </body>
 </html>
+async function testSave() {
+  await supabase.from("entries").insert([
+    {
+      name: "test",
+      data: { message: "it works" }
+    }
+  ]);
+
+  alert("Saved to database");
+}<button onclick="testSave()">Test Save</button>

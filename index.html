@@ -391,25 +391,32 @@ async function ensureLoggedIn() {
 
   const rangeButtons = [...document.querySelectorAll('.range-btn')];
 
-  let state = loadState();
+  let state = clone(defaultState);
   let currentEditId = null;
 
   function clone(obj) { return JSON.parse(JSON.stringify(obj)); }
-  function loadState() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return clone(defaultState);
-      const parsed = JSON.parse(raw);
-      return {
-        members: Array.isArray(parsed.members) && parsed.members.length ? parsed.members : clone(defaultState.members),
-        goalsByMember: parsed.goalsByMember && typeof parsed.goalsByMember === 'object' ? parsed.goalsByMember : {},
-        entries: Array.isArray(parsed.entries) ? parsed.entries : []
-      };
-    } catch (e) {
-      console.error(e);
-      return clone(defaultState);
-    }
+  async function loadState() {
+  if (!currentUser) return clone(defaultState);
+
+  const { data, error } = await supabase
+    .from("entries")
+    .select("*")
+    .eq("user_id", currentUser.id);
+
+  if (error) {
+    alert("Load error: " + error.message);
+    return clone(defaultState);
   }
+
+  const entries = data || [];
+  const membersFromEntries = [...new Set(entries.map(e => e.member).filter(Boolean))];
+
+  return {
+    members: membersFromEntries.length ? membersFromEntries : clone(defaultState.members),
+    goalsByMember: {},
+    entries: entries
+  };
+}
   async function saveState() {
   if (!currentUser) return;
 
@@ -1206,7 +1213,8 @@ async function ensureLoggedIn() {
     rangeButtons.forEach(btn => btn.addEventListener('click', () => setRange(btn.dataset.range)));
   }
 
-  ensureLoggedIn().then(() => {
+  ensureLoggedIn().then(async () => {
+  state = await loadState();
   populateMembers();
   setDefaultWeekDate();
   if (!els.startDate.value || !els.endDate.value) autoDateRange();
@@ -1214,8 +1222,7 @@ async function ensureLoggedIn() {
   setEditMode(null);
   bind();
   render();
-  });
-  })();
+});  })();
 </script>
 </body>
 </html>

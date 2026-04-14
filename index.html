@@ -316,46 +316,8 @@
     </div>
   </div>
 
-<script type="module">
-  import { createClient } from "https://esm.sh/@supabase/supabase-js";
-
-const supabase = createClient(
-  "https://ilwwhudktetejkemxsfz.supabase.co",
-  "sb_publishable_949AZZEfQiw_9gEGfYw9nw_bd1JNGpO"
-);
-
-let currentUser = null;
-
-async function ensureLoggedIn() {
-  const { data } = await supabase.auth.getUser();
-
-  if (data.user) {
-    currentUser = data.user;
-    return;
-  }
-
-  const email = prompt("Enter your email");
-  const password = prompt("Enter your password");
-
-  if (!email || !password) {
-    alert("Login cancelled");
-    return;
-  }
-
-  const { error } = await supabase.auth.signInWithPassword({
-    email,
-    password
-  });
-
-  if (error) {
-    alert("Login error: " + error.message);
-    return;
-  }
-
-  const result = await supabase.auth.getUser();
-  currentUser = result.data.user;
-  alert("Logged in");
-}(() => {
+<script>
+(() => {
   const STORAGE_KEY = 'weekly_1on1_coaching_tracker_v3';
   const defaults = {
     appsMonth: 20,
@@ -391,64 +353,27 @@ async function ensureLoggedIn() {
 
   const rangeButtons = [...document.querySelectorAll('.range-btn')];
 
-  let state = clone(defaultState);
+  let state = loadState();
   let currentEditId = null;
 
   function clone(obj) { return JSON.parse(JSON.stringify(obj)); }
-  async function loadState() {
-  if (!currentUser) return clone(defaultState);
-
-  const { data, error } = await supabase
-    .from("entries")
-    .select("*")
-    .eq("user_id", currentUser.id);
-
-  if (error) {
-    alert("Load error: " + error.message);
-    return clone(defaultState);
-  }
-
-  const entries = data || [];
-  const membersFromEntries = [...new Set(entries.map(e => e.member).filter(Boolean))];
-
-  return {
-    members: membersFromEntries.length ? membersFromEntries : clone(defaultState.members),
-    goalsByMember: {},
-    entries: entries
-  };
-}
-  async function saveState() {
-  if (!currentUser) return;
-
-  await supabase.from("entries").delete().eq("user_id", currentUser.id);
-
-  const rows = (state.entries || []).map(entry => ({
-    user_id: currentUser.id,
-    member: entry.member || "",
-    weekOf: entry.weekOf || "",
-    calls: Number(entry.calls || 0),
-    conversations: Number(entry.conversations || 0),
-    householdsQuoted: Number(entry.householdsQuoted || 0),
-    appsQuoted: Number(entry.appsQuoted || 0),
-    apps: Number(entry.apps || 0),
-    lifeApps: Number(entry.lifeApps || 0),
-    healthApps: Number(entry.healthApps || 0),
-    premium: Number(entry.premium || 0),
-    weeklyFocus: entry.weeklyFocus || "",
-    question1: entry.question1 || "",
-    question2: entry.question2 || "",
-    question3: entry.question3 || "",
-    updatedAt: entry.updatedAt || new Date().toISOString()
-  }));
-
-  if (rows.length > 0) {
-    const { error } = await supabase.from("entries").insert(rows);
-    if (error) {
-      alert("Save error: " + error.message);
-      return;
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return clone(defaultState);
+      const parsed = JSON.parse(raw);
+      return {
+        members: Array.isArray(parsed.members) && parsed.members.length ? parsed.members : clone(defaultState.members),
+        goalsByMember: parsed.goalsByMember && typeof parsed.goalsByMember === 'object' ? parsed.goalsByMember : {},
+        entries: Array.isArray(parsed.entries) ? parsed.entries : []
+      };
+    } catch (e) {
+      console.error(e);
+      return clone(defaultState);
     }
   }
-}
+  function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
   function setDefaultWeekDate() {
     const now = new Date();
     const offset = (now.getDay() + 6) % 7;
@@ -1213,8 +1138,6 @@ async function ensureLoggedIn() {
     rangeButtons.forEach(btn => btn.addEventListener('click', () => setRange(btn.dataset.range)));
   }
 
-  ensureLoggedIn().then(async () => {
-  state = await loadState();
   populateMembers();
   setDefaultWeekDate();
   if (!els.startDate.value || !els.endDate.value) autoDateRange();
@@ -1222,7 +1145,7 @@ async function ensureLoggedIn() {
   setEditMode(null);
   bind();
   render();
-});  })();
+})();
 </script>
 </body>
 </html>
